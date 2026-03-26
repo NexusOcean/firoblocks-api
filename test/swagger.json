@@ -1,0 +1,799 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/v1/search": {
+      "get": {
+        "operationId": "SearchController_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "Block height, block hash (64 char hex), txid (64 char hex), or address",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or empty query parameter"
+          }
+        },
+        "summary": "Search by block height, block hash, txid, or address",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/blocks": {
+      "get": {
+        "operationId": "BlocksController_getList",
+        "parameters": [
+          {
+            "name": "before",
+            "required": false,
+            "in": "query",
+            "description": "Return blocks before this height (cursor)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of blocks to return (1-100, default 25)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated block list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid before or limit parameter"
+          }
+        },
+        "summary": "Get a paginated list of blocks",
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/v1/blocks/{hashOrHeight}": {
+      "get": {
+        "operationId": "BlocksController_getBlock",
+        "parameters": [
+          {
+            "name": "hashOrHeight",
+            "required": true,
+            "in": "path",
+            "description": "Block hash (64 char hex) or block height (integer)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Block details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid block hash or height"
+          }
+        },
+        "summary": "Get a block by hash or height",
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/v1/transactions/recent": {
+      "get": {
+        "operationId": "TransactionsController_getRecentTransactions",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of transactions to return (default: 10)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of recent transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get recent transactions from the latest block",
+        "tags": [
+          "transactions"
+        ]
+      }
+    },
+    "/v1/transactions/{txid}": {
+      "get": {
+        "operationId": "TransactionsController_getTransaction",
+        "parameters": [
+          {
+            "name": "txid",
+            "required": true,
+            "in": "path",
+            "description": "Transaction ID (64 char hex)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid txid format"
+          }
+        },
+        "summary": "Get a transaction by txid",
+        "tags": [
+          "transactions"
+        ]
+      }
+    },
+    "/v1/addresses/{address}": {
+      "get": {
+        "operationId": "AddressesController_getAddress",
+        "parameters": [
+          {
+            "name": "address",
+            "required": true,
+            "in": "path",
+            "description": "Firo base58 address",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address details with paginated transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid address format"
+          },
+          "404": {
+            "description": "Address not found"
+          }
+        },
+        "summary": "Get address balance and paginated transaction history",
+        "tags": [
+          "addresses"
+        ]
+      }
+    },
+    "/v1/mempool": {
+      "get": {
+        "operationId": "MempoolController_getMempool",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current mempool status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MempoolDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get current mempool status and pending transaction ids",
+        "tags": [
+          "mempool"
+        ]
+      }
+    },
+    "/v1/network/stats": {
+      "get": {
+        "operationId": "NetworkController_getStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkStatsDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Scheduler has not written stats yet"
+          }
+        },
+        "summary": "Get network stats — hashrate, difficulty, supply, and more",
+        "tags": [
+          "network"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Firo Explorer API",
+    "description": "Block explorer REST API for the Firo blockchain",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of result found",
+            "enum": [
+              "block",
+              "transaction",
+              "address"
+            ]
+          },
+          "data": {
+            "description": "Result data matching the search query",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BlockDto"
+              },
+              {
+                "$ref": "#/components/schemas/TransactionDto"
+              },
+              {
+                "$ref": "#/components/schemas/AddressDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ]
+      },
+      "BlockSummaryDto": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string",
+            "description": "Block hash (64 char hex)"
+          },
+          "height": {
+            "type": "number",
+            "description": "Block height"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          },
+          "nTx": {
+            "type": "number",
+            "description": "Number of transactions"
+          },
+          "size": {
+            "type": "number",
+            "description": "Block size in bytes"
+          },
+          "difficulty": {
+            "type": "number",
+            "description": "Mining difficulty"
+          },
+          "chainlock": {
+            "type": "boolean",
+            "description": "Whether the block is chainlocked"
+          }
+        },
+        "required": [
+          "hash",
+          "height",
+          "time",
+          "nTx",
+          "size",
+          "difficulty",
+          "chainlock"
+        ]
+      },
+      "BlockListDto": {
+        "type": "object",
+        "properties": {
+          "blocks": {
+            "description": "List of blocks",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlockSummaryDto"
+            }
+          },
+          "tip": {
+            "type": "number",
+            "description": "Current chain tip height"
+          },
+          "nextCursor": {
+            "type": "object",
+            "description": "Cursor for next page, null if no more",
+            "nullable": true
+          }
+        },
+        "required": [
+          "blocks",
+          "tip",
+          "nextCursor"
+        ]
+      },
+      "BlockDto": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string",
+            "description": "Block hash (64 char hex)"
+          },
+          "height": {
+            "type": "number",
+            "description": "Block height"
+          },
+          "confirmations": {
+            "type": "number",
+            "description": "Number of confirmations"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          },
+          "medianTime": {
+            "type": "number",
+            "description": "Median time of the block"
+          },
+          "size": {
+            "type": "number",
+            "description": "Block size in bytes"
+          },
+          "weight": {
+            "type": "number",
+            "description": "Block weight"
+          },
+          "difficulty": {
+            "type": "number",
+            "description": "Mining difficulty"
+          },
+          "chainlock": {
+            "type": "boolean",
+            "description": "Whether the block is chainlocked"
+          },
+          "nTx": {
+            "type": "number",
+            "description": "Number of transactions in the block"
+          },
+          "previousBlockHash": {
+            "type": "string",
+            "description": "Previous block hash"
+          },
+          "nextBlockHash": {
+            "type": "string",
+            "description": "Next block hash"
+          },
+          "txids": {
+            "description": "Transaction IDs in the block",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hash",
+          "height",
+          "confirmations",
+          "time",
+          "medianTime",
+          "size",
+          "weight",
+          "difficulty",
+          "chainlock",
+          "nTx",
+          "txids"
+        ]
+      },
+      "TxVinDto": {
+        "type": "object",
+        "properties": {
+          "txid": {
+            "type": "string",
+            "description": "Source transaction ID"
+          },
+          "vout": {
+            "type": "number",
+            "description": "Source output index"
+          },
+          "address": {
+            "type": "string",
+            "description": "Source address"
+          },
+          "value": {
+            "type": "number",
+            "description": "Input value in FIRO"
+          },
+          "nFees": {
+            "type": "number",
+            "description": "Spark spend fees"
+          },
+          "lTags": {
+            "description": "Spark linking tags",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coinbase": {
+            "type": "string",
+            "description": "Coinbase data"
+          }
+        }
+      },
+      "TxVoutDto": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": "number",
+            "description": "Output index"
+          },
+          "value": {
+            "type": "number",
+            "description": "Output value in FIRO"
+          },
+          "type": {
+            "type": "string",
+            "description": "Script type (e.g. pubkeyhash, sparksmint)"
+          },
+          "addresses": {
+            "description": "Output addresses",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "n",
+          "value",
+          "type",
+          "addresses"
+        ]
+      },
+      "TransactionDto": {
+        "type": "object",
+        "properties": {
+          "txid": {
+            "type": "string",
+            "description": "Transaction ID (64 char hex)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Transaction type",
+            "enum": [
+              "coinbase",
+              "transparent",
+              "spark",
+              "unknown"
+            ]
+          },
+          "size": {
+            "type": "number",
+            "description": "Transaction size in bytes"
+          },
+          "fee": {
+            "type": "number",
+            "description": "Transaction fee in FIRO"
+          },
+          "confirmations": {
+            "type": "number",
+            "description": "Number of confirmations"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          },
+          "blockHash": {
+            "type": "string",
+            "description": "Block hash containing this transaction"
+          },
+          "blockHeight": {
+            "type": "number",
+            "description": "Block height containing this transaction"
+          },
+          "chainlock": {
+            "type": "boolean",
+            "description": "Whether the block is chainlocked"
+          },
+          "instantlock": {
+            "type": "boolean",
+            "description": "Whether the transaction has an InstantSend lock"
+          },
+          "vin": {
+            "description": "Transaction inputs",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TxVinDto"
+            }
+          },
+          "vout": {
+            "description": "Transaction outputs",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TxVoutDto"
+            }
+          }
+        },
+        "required": [
+          "txid",
+          "type",
+          "size",
+          "confirmations",
+          "time",
+          "blockHash",
+          "blockHeight",
+          "chainlock",
+          "instantlock",
+          "vin",
+          "vout"
+        ]
+      },
+      "AddressTxSummaryDto": {
+        "type": "object",
+        "properties": {
+          "txid": {
+            "type": "string",
+            "description": "Transaction ID (64 char hex)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Transaction type"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp"
+          },
+          "blockHeight": {
+            "type": "number",
+            "description": "Block height containing this transaction"
+          },
+          "confirmations": {
+            "type": "number",
+            "description": "Number of confirmations"
+          },
+          "valueDelta": {
+            "type": "number",
+            "description": "Net value change for this address in FIRO (positive = received, negative = sent)"
+          }
+        },
+        "required": [
+          "txid",
+          "type",
+          "time",
+          "blockHeight",
+          "confirmations"
+        ]
+      },
+      "AddressDto": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Firo base58 address"
+          },
+          "balance": {
+            "type": "number",
+            "description": "Current balance in FIRO"
+          },
+          "received": {
+            "type": "number",
+            "description": "Total received in FIRO"
+          },
+          "totalTxCount": {
+            "type": "number",
+            "description": "Total number of transactions for this address"
+          },
+          "transactions": {
+            "description": "Paginated transaction list",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressTxSummaryDto"
+            }
+          },
+          "page": {
+            "type": "number",
+            "description": "Current page number"
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "Total number of pages"
+          },
+          "hydrating": {
+            "type": "boolean",
+            "description": "Whether background transaction hydration is still in progress"
+          }
+        },
+        "required": [
+          "address",
+          "balance",
+          "received",
+          "totalTxCount",
+          "transactions",
+          "page",
+          "totalPages"
+        ]
+      },
+      "MempoolDto": {
+        "type": "object",
+        "properties": {
+          "pendingCount": {
+            "type": "number",
+            "description": "Number of pending transactions"
+          },
+          "bytes": {
+            "type": "number",
+            "description": "Total size of mempool in bytes"
+          },
+          "usage": {
+            "type": "number",
+            "description": "Memory usage of the mempool"
+          },
+          "maxMempool": {
+            "type": "number",
+            "description": "Maximum mempool size in bytes"
+          },
+          "minFee": {
+            "type": "number",
+            "description": "Minimum fee rate for mempool acceptance"
+          },
+          "instantSendLocks": {
+            "type": "number",
+            "description": "Number of InstantSend locks"
+          },
+          "txids": {
+            "description": "Pending transaction IDs",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "pendingCount",
+          "bytes",
+          "usage",
+          "maxMempool",
+          "minFee",
+          "instantSendLocks",
+          "txids"
+        ]
+      },
+      "NetworkStatsDto": {
+        "type": "object",
+        "properties": {
+          "height": {
+            "type": "number",
+            "description": "Current block height"
+          },
+          "transactions": {
+            "type": "number",
+            "description": "Total number of transactions on chain"
+          },
+          "totalSupply": {
+            "type": "number",
+            "description": "Total circulating supply in FIRO"
+          },
+          "difficulty": {
+            "type": "number",
+            "description": "Current mining difficulty"
+          },
+          "hashrate": {
+            "type": "number",
+            "description": "Current network hashrate in H/s"
+          },
+          "bestBlockHash": {
+            "type": "string",
+            "description": "Hash of the current best block"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Timestamp of when stats were last updated by the scheduler"
+          }
+        },
+        "required": [
+          "height",
+          "transactions",
+          "totalSupply",
+          "difficulty",
+          "hashrate",
+          "bestBlockHash",
+          "updatedAt"
+        ]
+      }
+    }
+  }
+}
