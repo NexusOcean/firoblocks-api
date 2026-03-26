@@ -6,7 +6,7 @@ import { CachedBlock, BlockDocument } from './blocks.model';
 import { FiroBlock, BlockDto, BlockListDto, BlockSummaryDto } from './blocks.types';
 
 const DEFAULT_LIMIT = 25;
-const CONCURRENCY = 10;
+const CONCURRENCY = 3;
 const TIP_TTL_MS = 15_000;
 const CONFIRMED_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 

@@ -14,21 +14,21 @@ async function bootstrap() {
 
   app.setGlobalPrefix('v1');
 
-  const config = new DocumentBuilder()
-    .setTitle('Firo Explorer API')
-    .setDescription('Block explorer REST API for the Firo blockchain')
-    .setVersion('1.0')
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('v1/docs', app, document);
-
   if (!isProd) {
+    const config = new DocumentBuilder()
+      .setTitle('Firo Explorer API')
+      .setDescription('Block explorer REST API for the Firo blockchain')
+      .setVersion('1.0')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('v1/docs', app, document);
+
     writeFileSync(join(process.cwd(), 'test', 'swagger.json'), JSON.stringify(document, null, 2));
   }
 
   app.enableCors({
-    origin: ['http://localhost:5173', 'https://firoblocks.vercel.app'],
+    origin: ['http://localhost:5173', 'https://firoblocks.app'],
     methods: ['*'],
     allowedHeaders: ['Authorization', 'Content-Type'],
   });

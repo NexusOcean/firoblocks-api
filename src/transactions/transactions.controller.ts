@@ -29,9 +29,12 @@ export class TransactionsController {
     description: 'List of recent transactions',
     type: [TransactionDto],
   })
-  getRecentTransactions(
+  @Get('recent')
+  async getRecentTransactions(
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ): Promise<TransactionDto[]> {
+    const cached = await this.txService.getCachedRecentTransactions();
+    if (cached) return cached.slice(0, limit);
     return this.txService.getRecentTransactions(limit);
   }
 

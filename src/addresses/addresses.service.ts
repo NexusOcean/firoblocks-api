@@ -14,7 +14,7 @@ import { TransactionDto } from '../transactions/transactions.types';
 
 const SATOSHIS = 1e8;
 const PAGE_SIZE = 25;
-const CONCURRENCY = 10;
+const CONCURRENCY = 3;
 const ADDRESS_TTL_MS = 5 * 60 * 1000; // 5 minutes — increased to allow background hydration to complete
 
 @Injectable()
