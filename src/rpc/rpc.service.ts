@@ -31,6 +31,8 @@ export class RpcService {
         auth: { username: n.user, password: n.pass },
         headers: { 'Content-Type': 'application/json' },
         timeout: 60_000,
+        maxContentLength: 30 * 1024 * 1024,
+        maxBodyLength: 30 * 1024 * 1024,
       }),
     );
   }
