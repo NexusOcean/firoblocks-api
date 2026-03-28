@@ -16,6 +16,7 @@ const SATOSHIS = 1e8;
 const PAGE_SIZE = 25;
 const CONCURRENCY = 3;
 const ADDRESS_TTL_MS = 5 * 60 * 1000; // 5 minutes — increased to allow background hydration to complete
+const MAX_TX_IDS = 1000;
 
 @Injectable()
 export class AddressesService {
@@ -33,7 +34,7 @@ export class AddressesService {
 
     if (cached) {
       const dto = cached.data as unknown as AddressDto;
-      const totalPages = Math.max(1, Math.ceil(dto.totalTxCount / PAGE_SIZE));
+      const totalPages = Math.max(1, Math.ceil(dto.transactions.length / PAGE_SIZE));
       const clampedPage = Math.min(Math.max(1, page), totalPages);
       const hydratedPages = Math.ceil(dto.transactions.length / PAGE_SIZE);
 
@@ -53,8 +54,8 @@ export class AddressesService {
     if (!allTxIds) throw new NotFoundException(`Address ${address} not found`);
 
     const totalTxCount = allTxIds.length;
-    const totalPages = Math.max(1, Math.ceil(totalTxCount / PAGE_SIZE));
-    const reversed = [...allTxIds].reverse();
+    const reversed = [...allTxIds].reverse().slice(0, MAX_TX_IDS);
+    const totalPages = Math.max(1, Math.ceil(reversed.length / PAGE_SIZE));
 
     // Only hydrate first page for immediate response
     const firstPageTxids = reversed.slice(0, PAGE_SIZE);
@@ -64,11 +65,11 @@ export class AddressesService {
       address,
       balance: balanceRaw.balance / SATOSHIS,
       received: balanceRaw.received / SATOSHIS,
-      totalTxCount,
+      totalTxCount, // real count for display
       transactions: firstPageTxs.map((tx) => this.toSummaryDto(tx, address)),
       page: 1,
       totalPages,
-      hydrating: totalTxCount > PAGE_SIZE, // signal to frontend that more is loading
+      hydrating: reversed.length > PAGE_SIZE,
     };
 
     await this.cache(address, dto);
