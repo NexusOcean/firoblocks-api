@@ -23,7 +23,7 @@ export class NetworkService {
       );
     }
     return {
-      height: utxo.height!,
+      height: chain.height!,
       transactions: utxo.transactions!,
       totalSupply: utxo.totalSupply!,
       difficulty: chain.difficulty!,
