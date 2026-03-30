@@ -13,10 +13,12 @@ import {
 import { TransactionDto } from '../transactions/transactions.types';
 
 const SATOSHIS = 1e8;
-const PAGE_SIZE = 25;
-const CONCURRENCY = 3;
+const PAGE_SIZE = 10;
+const CONCURRENCY = 2;
 const ADDRESS_TTL_MS = 5 * 60 * 1000; // 5 minutes — increased to allow background hydration to complete
 const MAX_TX_IDS = 1000;
+const MAX_HYDRATE = 100; // cap background hydration
+const BATCH_DELAY_MS = 500; // pause between batches
 
 @Injectable()
 export class AddressesService {
@@ -117,17 +119,31 @@ export class AddressesService {
     remainingTxids: string[],
     dto: AddressDto,
   ): Promise<void> {
-    const remainingTxs = await this.hydrateIds(remainingTxids);
-    const remainingSummaries = remainingTxs.map((tx) => this.toSummaryDto(tx, address));
+    const capped = remainingTxids.slice(0, MAX_HYDRATE);
+    const results: TransactionDto[] = [];
+
+    for (let i = 0; i < capped.length; i += CONCURRENCY) {
+      const batch = capped.slice(i, i + CONCURRENCY);
+      const settled = await Promise.allSettled(
+        batch.map((id) => this.txService.getTransaction(id)),
+      );
+
+      for (const result of settled) {
+        if (result.status === 'fulfilled') results.push(result.value);
+        else this.logger.warn(`Background hydration failed for tx: ${result.reason}`);
+      }
+
+      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+    }
 
     const updatedDto: AddressDto = {
       ...dto,
-      transactions: [...dto.transactions, ...remainingSummaries],
+      transactions: [...dto.transactions, ...results.map((tx) => this.toSummaryDto(tx, address))],
       hydrating: false,
     };
 
     await this.cache(address, updatedDto);
-    this.logger.log(`Background hydration complete for ${address}`);
+    this.logger.log(`Background hydration complete for ${address} (${results.length} txs)`);
   }
 
   private paginateDto(dto: AddressDto, page: number): AddressDto {
