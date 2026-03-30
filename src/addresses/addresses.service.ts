@@ -53,8 +53,8 @@ export class AddressesService {
 
     if (!allTxIds) throw new NotFoundException(`Address ${address} not found`);
 
-    const totalTxCount = allTxIds.length;
     const reversed = [...allTxIds].reverse().slice(0, MAX_TX_IDS);
+    const totalTxCount = reversed.length;
     const totalPages = Math.max(1, Math.ceil(reversed.length / PAGE_SIZE));
 
     // Only hydrate first page for immediate response
