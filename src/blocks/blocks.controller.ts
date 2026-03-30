@@ -46,21 +46,18 @@ export class BlocksController {
     return this.blocksService.getBlockList(parsedBefore, parsedLimit);
   }
 
-  @Get(':hashOrHeight')
-  @ApiOperation({ summary: 'Get a block by hash or height' })
+  @Get(':blockHeight')
+  @ApiOperation({ summary: 'Get a block by height' })
   @ApiParam({
-    name: 'hashOrHeight',
-    description: 'Block hash (64 char hex) or block height (integer)',
+    name: 'blockHeight',
+    description: 'Block height',
   })
   @ApiResponse({ status: 200, description: 'Block details', type: BlockDto })
-  @ApiResponse({ status: 400, description: 'Invalid block hash or height' })
-  getBlock(@Param('hashOrHeight') hashOrHeight: string) {
-    if (/^[0-9a-fA-F]{64}$/.test(hashOrHeight)) {
-      return this.blocksService.getBlockByHash(hashOrHeight);
-    }
-    const height = parseInt(hashOrHeight, 10);
+  @ApiResponse({ status: 400, description: 'Invalid block height' })
+  getBlock(@Param('blockHeight') blockHeight: string) {
+    const height = parseInt(blockHeight, 10);
     if (isNaN(height) || height < 0) {
-      throw new BadRequestException('Invalid block hash or height');
+      throw new BadRequestException('Invalid block height');
     }
     return this.blocksService.getBlockByHeight(height);
   }

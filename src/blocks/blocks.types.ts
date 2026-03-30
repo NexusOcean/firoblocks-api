@@ -61,11 +61,11 @@ export class BlockDto {
   @ApiProperty({ description: 'Number of transactions in the block' })
   nTx: number;
 
-  @ApiProperty({ description: 'Previous block hash', required: false })
-  previousBlockHash?: string;
+  @ApiProperty({ description: 'Previous block by height', required: false })
+  previousBlockHeight?: number;
 
-  @ApiProperty({ description: 'Next block hash', required: false })
-  nextBlockHash?: string;
+  @ApiProperty({ description: 'Next block by height', required: false })
+  nextBlockHeight?: number;
 
   @ApiProperty({ description: 'Transaction IDs in the block', type: [String] })
   txids: string[];

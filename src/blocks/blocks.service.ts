@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RpcService } from '../rpc/rpc.service';
@@ -12,7 +12,6 @@ const CONFIRMED_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class BlocksService {
-  private readonly logger = new Logger(BlocksService.name);
   private tipCache: { value: number; expiresAt: number } | null = null;
 
   constructor(
@@ -102,8 +101,8 @@ export class BlocksService {
       difficulty: raw.difficulty,
       chainlock: raw.chainlock,
       nTx: raw.tx.length,
-      previousBlockHash: raw.previousblockhash,
-      nextBlockHash: raw.nextblockhash,
+      previousBlockHeight: raw.height - 1,
+      nextBlockHeight: raw.height < tip ? raw.height + 1 : undefined,
       txids: raw.tx,
     };
   }
