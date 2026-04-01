@@ -6,13 +6,11 @@ describe('Addresses', () => {
   let validAddress: string;
 
   beforeAll(async () => {
-    // grab latest block -> first txid -> first output address
     const { data: blockList } = await axios.get(`${BASE}/blocks`, {
       params: { limit: 1 },
     });
-    const hash = blockList.blocks[0].hash;
-    const { data: block } = await axios.get(`${BASE}/blocks/${hash}`);
-    // skip coinbase, find a tx with a transparent output address
+    const height = blockList.blocks[0].height;
+    const { data: block } = await axios.get(`${BASE}/blocks/${height}`);
     for (const txid of block.txids) {
       const { data: tx } = await axios.get(`${BASE}/transactions/${txid}`);
       const vout = tx.vout.find((o: any) => o.addresses?.length > 0 && o.type === 'pubkeyhash');

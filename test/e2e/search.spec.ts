@@ -15,7 +15,7 @@ describe('Search', () => {
     blockHash = blockList.blocks[0].hash;
     blockHeight = blockList.blocks[0].height;
 
-    const { data: block } = await axios.get(`${BASE}/blocks/${blockHash}`);
+    const { data: block } = await axios.get(`${BASE}/blocks/${blockHeight}`);
     txid = block.txids[0];
 
     for (const id of block.txids) {

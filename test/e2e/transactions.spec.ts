@@ -9,7 +9,7 @@ describe('Transactions', () => {
     const { data: blockList } = await axios.get(`${BASE}/blocks`, {
       params: { limit: 1 },
     });
-    const { data: block } = await axios.get(`${BASE}/blocks/${blockList.blocks[0].hash}`);
+    const { data: block } = await axios.get(`${BASE}/blocks/${blockList.blocks[0].height}`);
     txid = block.txids[0];
   });
 

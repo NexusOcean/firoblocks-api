@@ -3,14 +3,12 @@ import axios from 'axios';
 const BASE = 'http://localhost:3000/v1';
 
 describe('Blocks', () => {
-  let blockHash: string;
   let blockHeight: number;
 
   beforeAll(async () => {
     const { data } = await axios.get(`${BASE}/blocks`, {
       params: { limit: 1 },
     });
-    blockHash = data.blocks[0].hash;
     blockHeight = data.blocks[0].height;
   });
 
@@ -49,7 +47,6 @@ describe('Blocks', () => {
         });
         const page1Heights = page1.blocks.map((b: any) => b.height);
         const page2Heights = page2.blocks.map((b: any) => b.height);
-        // page2 blocks should all be lower than page1 blocks
         expect(Math.max(...page2Heights)).toBeLessThan(Math.min(...page1Heights));
       }
     });
@@ -73,12 +70,12 @@ describe('Blocks', () => {
     });
   });
 
-  describe('GET /blocks/:hashOrHeight', () => {
-    it('should return block details by hash', async () => {
-      const { status, data } = await axios.get(`${BASE}/blocks/${blockHash}`);
+  describe('GET /blocks/:height', () => {
+    it('should return block details by height', async () => {
+      const { status, data } = await axios.get(`${BASE}/blocks/${blockHeight}`);
       expect(status).toBe(200);
-      expect(data.hash).toBe(blockHash);
-      expect(typeof data.height).toBe('number');
+      expect(data.height).toBe(blockHeight);
+      expect(typeof data.hash).toBe('string');
       expect(typeof data.confirmations).toBe('number');
       expect(typeof data.time).toBe('number');
       expect(typeof data.medianTime).toBe('number');
@@ -90,14 +87,7 @@ describe('Blocks', () => {
       expect(Array.isArray(data.txids)).toBe(true);
     });
 
-    it('should return block details by height', async () => {
-      const { status, data } = await axios.get(`${BASE}/blocks/${blockHeight}`);
-      expect(status).toBe(200);
-      expect(data.height).toBe(blockHeight);
-      expect(data.hash).toBe(blockHash);
-    });
-
-    it('should return 400 for invalid hash or height', async () => {
+    it('should return 400 for invalid height', async () => {
       try {
         await axios.get(`${BASE}/blocks/not-valid`);
         fail('Expected 400');
