@@ -62,4 +62,10 @@ export class AddressDto {
     required: false,
   })
   hydrating?: boolean;
+
+  @ApiProperty({
+    description: 'Full list of txids for this address (newest first)',
+    required: false,
+  })
+  allTxIds?: string[];
 }

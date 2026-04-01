@@ -94,15 +94,15 @@
         ]
       }
     },
-    "/v1/blocks/{hashOrHeight}": {
+    "/v1/blocks/{blockHeight}": {
       "get": {
         "operationId": "BlocksController_getBlock",
         "parameters": [
           {
-            "name": "hashOrHeight",
+            "name": "blockHeight",
             "required": true,
             "in": "path",
-            "description": "Block hash (64 char hex) or block height (integer)",
+            "description": "Block height",
             "schema": {
               "type": "string"
             }
@@ -120,10 +120,10 @@
             }
           },
           "400": {
-            "description": "Invalid block hash or height"
+            "description": "Invalid block height"
           }
         },
-        "summary": "Get a block by hash or height",
+        "summary": "Get a block by height",
         "tags": [
           "blocks"
         ]
@@ -447,13 +447,13 @@
             "type": "number",
             "description": "Number of transactions in the block"
           },
-          "previousBlockHash": {
-            "type": "string",
-            "description": "Previous block hash"
+          "previousBlockHeight": {
+            "type": "number",
+            "description": "Previous block by height"
           },
-          "nextBlockHash": {
-            "type": "string",
-            "description": "Next block hash"
+          "nextBlockHeight": {
+            "type": "number",
+            "description": "Next block by height"
           },
           "txids": {
             "description": "Transaction IDs in the block",
@@ -694,6 +694,13 @@
           "hydrating": {
             "type": "boolean",
             "description": "Whether background transaction hydration is still in progress"
+          },
+          "allTxIds": {
+            "description": "Full list of txids for this address (newest first)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

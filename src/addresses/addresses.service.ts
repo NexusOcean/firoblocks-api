@@ -14,11 +14,9 @@ import { TransactionDto } from '../transactions/transactions.types';
 
 const SATOSHIS = 1e8;
 const PAGE_SIZE = 10;
-const CONCURRENCY = 2;
-const ADDRESS_TTL_MS = 5 * 60 * 1000; // 5 minutes — increased to allow background hydration to complete
+const CONCURRENCY = 3;
+const ADDRESS_TTL_MS = 15 * 60 * 1000;
 const MAX_TX_IDS = 1000;
-const MAX_HYDRATE = 100; // cap background hydration
-const BATCH_DELAY_MS = 500; // pause between batches
 
 @Injectable()
 export class AddressesService {
@@ -32,140 +30,50 @@ export class AddressesService {
   ) {}
 
   async getAddress(address: string, page = 1): Promise<AddressDto> {
-    const cached = await this.addressModel.findOne({ address }).lean();
+    let cached = await this.addressModel.findOne({ address }).lean();
 
-    if (cached) {
-      const dto = cached.data as unknown as AddressDto;
-      const totalPages = Math.max(1, Math.ceil(dto.transactions.length / PAGE_SIZE));
-      const clampedPage = Math.min(Math.max(1, page), totalPages);
-      const hydratedPages = Math.ceil(dto.transactions.length / PAGE_SIZE);
+    if (!cached) {
+      const [balanceRaw, allTxIds] = await Promise.all([
+        this.rpc.call<FiroAddressBalance>('getaddressbalance', [{ addresses: [address] }]),
+        this.rpc.call<FiroAddressTxIds>('getaddresstxids', [{ addresses: [address] }]),
+      ]);
 
-      // Requested page is not yet hydrated — fetch it on demand and update cache
-      if (clampedPage > hydratedPages) {
-        return this.hydratePage(address, dto, clampedPage);
-      }
+      if (!allTxIds) throw new NotFoundException(`Address ${address} not found`);
 
-      return this.paginateDto(dto, page);
+      const reversed = [...allTxIds].reverse().slice(0, MAX_TX_IDS);
+
+      await this.cache(address, {
+        balance: balanceRaw.balance / SATOSHIS,
+        received: balanceRaw.received / SATOSHIS,
+        allTxIds: reversed,
+      });
+
+      cached = await this.addressModel.findOne({ address }).lean();
     }
 
-    const [balanceRaw, allTxIds] = await Promise.all([
-      this.rpc.call<FiroAddressBalance>('getaddressbalance', [{ addresses: [address] }]),
-      this.rpc.call<FiroAddressTxIds>('getaddresstxids', [{ addresses: [address] }]),
-    ]);
-
-    if (!allTxIds) throw new NotFoundException(`Address ${address} not found`);
-
-    const reversed = [...allTxIds].reverse().slice(0, MAX_TX_IDS);
-    const totalTxCount = reversed.length;
-    const totalPages = Math.max(1, Math.ceil(reversed.length / PAGE_SIZE));
-
-    // Only hydrate first page for immediate response
-    const firstPageTxids = reversed.slice(0, PAGE_SIZE);
-    const firstPageTxs = await this.hydrateIds(firstPageTxids);
-
-    const dto: AddressDto = {
-      address,
-      balance: balanceRaw.balance / SATOSHIS,
-      received: balanceRaw.received / SATOSHIS,
-      totalTxCount, // real count for display
-      transactions: firstPageTxs.map((tx) => this.toSummaryDto(tx, address)),
-      page: 1,
-      totalPages,
-      hydrating: reversed.length > PAGE_SIZE,
+    const stored = cached!.data as unknown as {
+      balance: number;
+      received: number;
+      allTxIds: string[];
     };
 
-    await this.cache(address, dto);
-
-    // Hydrate remaining pages in background without blocking response
-    if (reversed.length > PAGE_SIZE) {
-      this.hydrateRemaining(address, reversed.slice(PAGE_SIZE), dto).catch((err) =>
-        this.logger.warn(`Background hydration failed for ${address}: ${err}`),
-      );
-    }
-
-    return this.paginateDto(dto, page);
-  }
-
-  // Called when a user requests a page that hasn't been hydrated yet
-  private async hydratePage(address: string, dto: AddressDto, page: number): Promise<AddressDto> {
-    const allTxIds = await this.rpc.call<FiroAddressTxIds>('getaddresstxids', [
-      { addresses: [address] },
-    ]);
-
-    const reversed = [...allTxIds].reverse();
-    const start = (page - 1) * PAGE_SIZE;
-    const pageTxids = reversed.slice(start, start + PAGE_SIZE);
-    const pageTxs = await this.hydrateIds(pageTxids);
-    const pageSummaries = pageTxs.map((tx) => this.toSummaryDto(tx, address));
-
-    // Fill any gaps with placeholders so slice indexing stays correct
-    const updatedTransactions = [...dto.transactions];
-    while (updatedTransactions.length < start) {
-      updatedTransactions.push(null as any);
-    }
-    updatedTransactions.splice(start, PAGE_SIZE, ...pageSummaries);
-
-    const updatedDto: AddressDto = {
-      ...dto,
-      transactions: updatedTransactions,
-    };
-
-    await this.cache(address, updatedDto);
-    return this.paginateDto(updatedDto, page);
-  }
-
-  private async hydrateRemaining(
-    address: string,
-    remainingTxids: string[],
-    dto: AddressDto,
-  ): Promise<void> {
-    const capped = remainingTxids.slice(0, MAX_HYDRATE);
-    const results: TransactionDto[] = [];
-
-    for (let i = 0; i < capped.length; i += CONCURRENCY) {
-      const batch = capped.slice(i, i + CONCURRENCY);
-      const settled = await Promise.allSettled(
-        batch.map((id) => this.txService.getTransaction(id)),
-      );
-
-      for (const result of settled) {
-        if (result.status === 'fulfilled') results.push(result.value);
-        else this.logger.warn(`Background hydration failed for tx: ${result.reason}`);
-      }
-
-      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
-    }
-
-    const updatedDto: AddressDto = {
-      ...dto,
-      transactions: [...dto.transactions, ...results.map((tx) => this.toSummaryDto(tx, address))],
-      hydrating: false,
-    };
-
-    await this.cache(address, updatedDto);
-    this.logger.log(`Background hydration complete for ${address} (${results.length} txs)`);
-  }
-
-  private paginateDto(dto: AddressDto, page: number): AddressDto {
-    const totalPages = Math.max(1, Math.ceil(dto.totalTxCount / PAGE_SIZE));
+    const { balance, received, allTxIds } = stored;
+    const totalTxCount = allTxIds.length;
+    const totalPages = Math.max(1, Math.ceil(totalTxCount / PAGE_SIZE));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const start = (clampedPage - 1) * PAGE_SIZE;
+    const pageTxids = allTxIds.slice(start, start + PAGE_SIZE);
+    const pageTxs = await this.hydrateIds(pageTxids);
 
     return {
-      ...dto,
-      transactions: dto.transactions.filter(Boolean).slice(start, start + PAGE_SIZE),
+      address,
+      balance,
+      received,
+      totalTxCount,
+      transactions: pageTxs.map((tx) => this.toSummaryDto(tx, address)),
       page: clampedPage,
       totalPages,
     };
-  }
-
-  private async cache(address: string, dto: AddressDto): Promise<void> {
-    const expiresAt = new Date(Date.now() + ADDRESS_TTL_MS);
-    await this.addressModel.updateOne(
-      { address },
-      { $set: { address, data: dto, expiresAt } },
-      { upsert: true },
-    );
   }
 
   private async hydrateIds(txids: string[]): Promise<TransactionDto[]> {
@@ -176,13 +84,9 @@ export class AddressesService {
       const settled = await Promise.allSettled(
         batch.map((id) => this.txService.getTransaction(id)),
       );
-
       for (const result of settled) {
-        if (result.status === 'fulfilled') {
-          results.push(result.value);
-        } else {
-          this.logger.warn(`Failed to hydrate tx: ${result.reason}`);
-        }
+        if (result.status === 'fulfilled') results.push(result.value);
+        else this.logger.warn(`Failed to hydrate tx: ${result.reason}`);
       }
     }
 
@@ -211,5 +115,14 @@ export class AddressesService {
       confirmations: tx.confirmations,
       valueDelta,
     };
+  }
+
+  private async cache(address: string, data: object): Promise<void> {
+    const expiresAt = new Date(Date.now() + ADDRESS_TTL_MS);
+    await this.addressModel.updateOne(
+      { address },
+      { $set: { address, data, expiresAt } },
+      { upsert: true },
+    );
   }
 }
