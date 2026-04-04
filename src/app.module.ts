@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
@@ -9,6 +9,8 @@ import { AddressesModule } from './addresses/addresses.module';
 import { MempoolModule } from './mempool/mempool.module';
 import { NetworkModule } from './network/network.module';
 import { RpcModule } from './rpc/rpc.module';
+import { AppService } from './app.service';
+import cors from 'cors';
 
 @Module({
   imports: [
@@ -28,6 +30,23 @@ import { RpcModule } from './rpc/rpc.module';
     NetworkModule,
     RpcModule,
   ],
+  providers: [AppService],
   controllers: [AppController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(
+        cors({
+          origin: ['http://localhost:5173', 'https://firoblocks.app'],
+          methods: ['*'],
+          allowedHeaders: ['Authorization', 'Content-Type'],
+        }),
+      )
+      .exclude(
+        { path: 'health', method: RequestMethod.GET },
+        { path: 'metrics', method: RequestMethod.GET },
+      )
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

@@ -47,6 +47,7 @@ describe('Blocks', () => {
         });
         const page1Heights = page1.blocks.map((b: any) => b.height);
         const page2Heights = page2.blocks.map((b: any) => b.height);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         expect(Math.max(...page2Heights)).toBeLessThan(Math.min(...page1Heights));
       }
     });

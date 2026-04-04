@@ -36,7 +36,7 @@ yarn dev
 
 ## API Documentation
 
-Swagger docs are available at /v1/docs when running locally, or publicly at [https://api.firoblocks.app/v1/docs](https://api.firoblocks.app/v1/docs).
+Swagger docs are available at /v1/docs when running locally, or publicly at [https://api.firoblocks.app/docs](https://api.firoblocks.app/docs).
 
 ## Community
 

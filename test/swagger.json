@@ -1,17 +1,33 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/v1/health": {
+    "/health": {
       "get": {
         "operationId": "AppController_getHello",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Current health status results"
           }
         },
+        "summary": "Get health and uptime",
         "tags": [
-          "App"
+          "app"
+        ]
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "AppController_getMetrics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Live feed of query results for Prometheus"
+          }
+        },
+        "summary": "Get MongoDB metrics",
+        "tags": [
+          "app"
         ]
       }
     },
