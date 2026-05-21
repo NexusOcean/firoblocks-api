@@ -1,0 +1,162 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { RpcService } from '../rpc/rpc.service';
+import { TransactionsService } from '../transactions/transactions.service';
+import { CachedAddress, AddressDocument } from './addresses.schema';
+import {
+  FiroAddressBalance,
+  FiroAddressTxIds,
+  AddressDto,
+  AddressTxSummaryDto,
+} from './addresses.types';
+import { TransactionDto } from '../transactions/transactions.types';
+
+const SATOSHIS = 1e8;
+const CONCURRENCY = 3;
+const MAX_TX_IDS = 1000;
+
+@Injectable()
+export class AddressesService {
+  private readonly logger = new Logger(AddressesService.name);
+
+  constructor(
+    private readonly rpc: RpcService,
+    private readonly txService: TransactionsService,
+    @InjectModel(CachedAddress.name)
+    private readonly addressModel: Model<AddressDocument>,
+  ) {}
+
+  async getAddress(address: string, page = 1, limit = 10): Promise<AddressDto> {
+    const cached = await this.addressModel
+      .findOne({ address, expiresAt: { $gt: new Date() } })
+      .lean();
+
+    let balance = 0;
+    let received = 0;
+    let allTxIds: string[] = [];
+
+    if (!cached) {
+      const [balanceRaw, allTxIdsRaw] = await Promise.all([
+        this.rpc.call<FiroAddressBalance>('getaddressbalance', { addresses: [address] }),
+        this.rpc.call<FiroAddressTxIds>('getaddresstxids', { addresses: [address] }),
+      ]);
+
+      if (!allTxIdsRaw) throw new NotFoundException(`Address ${address} not found`);
+
+      const reversed = [...new Set(allTxIdsRaw)].reverse().slice(0, MAX_TX_IDS);
+
+      balance = balanceRaw.balance / SATOSHIS;
+      received = balanceRaw.received / SATOSHIS;
+      allTxIds = reversed;
+
+      await this.cache(address, { balance, received, allTxIds });
+    } else {
+      const stored = cached.data as unknown as {
+        balance: number;
+        received: number;
+        allTxIds: string[];
+      };
+
+      ({ balance, received } = stored);
+      allTxIds = [...new Set(stored.allTxIds)];
+    }
+
+    const totalTxCount = allTxIds.length;
+    const totalPages = Math.max(1, Math.ceil(totalTxCount / limit));
+    const clampedPage = Math.min(Math.max(1, page), totalPages);
+    const start = (clampedPage - 1) * limit;
+    const pageTxids = allTxIds.slice(start, start + limit);
+    const pageTxs = await this.hydrateIds(pageTxids);
+
+    this.logger.debug('Returning address', address);
+
+    return {
+      address,
+      balance,
+      received,
+      totalTxCount,
+      transactions: pageTxs.map((tx) => this.toSummaryDto(tx, address)),
+      page: clampedPage,
+      totalPages,
+    };
+  }
+
+  private async hydrateIds(txids: string[]): Promise<TransactionDto[]> {
+    const results: TransactionDto[] = [];
+
+    for (let i = 0; i < txids.length; i += CONCURRENCY) {
+      const batch = txids.slice(i, i + CONCURRENCY);
+      const settled = await Promise.allSettled(
+        batch.map((id) => this.txService.getTransaction(id)),
+      );
+      for (const result of settled) {
+        if (result.status === 'fulfilled') results.push(result.value);
+        else this.logger.warn(`Failed to hydrate tx: ${result.reason}`);
+      }
+    }
+
+    return results;
+  }
+
+  private toSummaryDto(tx: TransactionDto, address: string): AddressTxSummaryDto {
+    const totalOut = tx.vout
+      .filter((v) => v.addresses.includes(address))
+      .reduce((s, v) => s + v.value, 0);
+
+    const totalIn = tx.vin
+      .filter((v) => v.address === address)
+      .reduce((s, v) => s + (v.value ?? 0), 0);
+
+    const valueDelta = this.computeValueDelta(tx.category, totalIn, totalOut);
+
+    return {
+      txid: tx.txid,
+      type: tx.type,
+      time: tx.time,
+      blockHeight: tx.blockHeight,
+      confirmations: tx.confirmations,
+      valueDelta,
+    };
+  }
+
+  private computeValueDelta(
+    category: TransactionDto['category'],
+    totalIn: number,
+    totalOut: number,
+  ): number | undefined {
+    switch (category) {
+      case 'transparent':
+      case 'coinbase':
+      case 'spark_mint':
+      case 'lelantus_mint':
+      case 'sigma_mint':
+      case 'zerocoin_mint':
+      case 'lelantus_to_spark':
+        return parseFloat((totalOut - totalIn).toFixed(8));
+
+      case 'spark_spend':
+      case 'lelantus_joinsplit':
+      case 'sigma_spend':
+      case 'zerocoin_spend':
+        return totalOut > 0 ? parseFloat(totalOut.toFixed(8)) : undefined;
+
+      default:
+        return undefined;
+    }
+  }
+
+  private async cache(address: string, data: object): Promise<void> {
+    await this.addressModel.updateOne(
+      { address },
+      {
+        $set: {
+          address,
+          data,
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        },
+      },
+      { upsert: true },
+    );
+  }
+}
