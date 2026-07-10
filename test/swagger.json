@@ -295,6 +295,28 @@
         ]
       }
     },
+    "/v1/mempool": {
+      "get": {
+        "operationId": "MempoolController_getMempool",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current mempool status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MempoolDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get current mempool status and pending transaction ids",
+        "tags": [
+          "mempool"
+        ]
+      }
+    },
     "/v1/masternodes/stats": {
       "get": {
         "operationId": "MasternodeController_lookup",
@@ -898,6 +920,80 @@
           "hashrate",
           "bestBlockHash",
           "updatedAt"
+        ]
+      },
+      "MempoolEntryDto": {
+        "type": "object",
+        "properties": {
+          "txid": {
+            "type": "string"
+          },
+          "fee": {
+            "type": "number"
+          },
+          "size": {
+            "type": "number"
+          },
+          "feeRate": {
+            "type": "number",
+            "description": "Fee rate in FIRO/kB"
+          },
+          "time": {
+            "type": "number",
+            "description": "Unix timestamp of entry"
+          }
+        },
+        "required": [
+          "txid",
+          "fee",
+          "size",
+          "feeRate",
+          "time"
+        ]
+      },
+      "MempoolDto": {
+        "type": "object",
+        "properties": {
+          "pendingCount": {
+            "type": "number",
+            "description": "Number of pending transactions"
+          },
+          "bytes": {
+            "type": "number",
+            "description": "Total size of mempool in bytes"
+          },
+          "usage": {
+            "type": "number",
+            "description": "Memory usage of the mempool"
+          },
+          "maxMempool": {
+            "type": "number",
+            "description": "Maximum mempool size in bytes"
+          },
+          "minFee": {
+            "type": "number",
+            "description": "Minimum fee rate for mempool acceptance"
+          },
+          "instantSendLocks": {
+            "type": "number",
+            "description": "Number of InstantSend locks"
+          },
+          "transactions": {
+            "description": "Pending transactions",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MempoolEntryDto"
+            }
+          }
+        },
+        "required": [
+          "pendingCount",
+          "bytes",
+          "usage",
+          "maxMempool",
+          "minFee",
+          "instantSendLocks",
+          "transactions"
         ]
       },
       "EstimateRequest": {

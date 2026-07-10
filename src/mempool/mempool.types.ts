@@ -12,7 +12,41 @@ export interface FiroMempoolInfo {
 
 export type FiroRawMempool = string[];
 
+export interface FiroMempoolEntry {
+  size: number;
+  fee: number;
+  modifiedfee: number;
+  time: number;
+  height: number;
+  descendantcount: number;
+  descendantsize: number;
+  descendantfees: number;
+  ancestorcount: number;
+  ancestorsize: number;
+  ancestorfees: number;
+  depends: string[];
+}
+
+export type FiroRawMempoolVerbose = Record<string, FiroMempoolEntry>;
+
 // ─── REST response DTOs ───────────────────────────────────────────────────────
+export class MempoolEntryDto {
+  @ApiProperty()
+  txid: string;
+
+  @ApiProperty()
+  fee: number;
+
+  @ApiProperty()
+  size: number;
+
+  @ApiProperty({ description: 'Fee rate in FIRO/kB' })
+  feeRate: number;
+
+  @ApiProperty({ description: 'Unix timestamp of entry' })
+  time: number;
+}
+
 export class MempoolDto {
   @ApiProperty({ description: 'Number of pending transactions' })
   pendingCount: number;
@@ -32,6 +66,6 @@ export class MempoolDto {
   @ApiProperty({ description: 'Number of InstantSend locks' })
   instantSendLocks: number;
 
-  @ApiProperty({ description: 'Pending transaction IDs', type: [String] })
-  txids: string[];
+  @ApiProperty({ description: 'Pending transactions', type: [MempoolEntryDto] })
+  transactions: MempoolEntryDto[];
 }

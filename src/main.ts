@@ -11,9 +11,12 @@ import '@fastify/cookie';
 
 const PORT = process.env.PORT ?? 3000;
 const isProd = process.env.NODE_ENV === 'production';
+const METRICS = process.env.METRICS === 'true';
 
 async function bootstrap() {
-  mongoose.plugin(mongooseMetricsPlugin);
+  if (METRICS) {
+    mongoose.plugin(mongooseMetricsPlugin);
+  }
 
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
     logger: ['debug', 'warn', 'error'],

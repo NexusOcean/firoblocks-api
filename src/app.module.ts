@@ -12,6 +12,7 @@ import { AppService } from './app.service';
 import { MasternodeModule } from './masternode/masternode.module';
 import cors from 'cors';
 import { SwapModule } from './swap/swap.module';
+import { MempoolModule } from './mempool/mempool.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { SwapModule } from './swap/swap.module';
     TransactionsModule,
     AddressesModule,
     NetworkModule,
+    MempoolModule,
     RpcModule,
     MasternodeModule,
     SwapModule,

@@ -1,6 +1,12 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { RpcService } from '../rpc/rpc.service';
-import { FiroMempoolInfo, FiroRawMempool, MempoolDto } from './mempool.types';
+import {
+  FiroMempoolInfo,
+  FiroRawMempool,
+  FiroRawMempoolVerbose,
+  MempoolDto,
+  MempoolEntryDto,
+} from './mempool.types';
 import { BatchResult } from '@nexusocean/firo-rpc';
 
 const CACHE_TTL_MS = 10_000;
@@ -18,7 +24,7 @@ export class MempoolService {
 
     const [info, txids] = (await this.rpc.batch([
       { method: 'getmempoolinfo' },
-      { method: 'getrawmempool' },
+      { method: 'getrawmempool', params: [true] },
     ])) as BatchResult<FiroMempoolInfo | FiroRawMempool>[];
 
     if (info.error)
@@ -29,6 +35,16 @@ export class MempoolService {
     const { size, bytes, usage, maxmempool, mempoolminfee, instantsendlocks } =
       info.result as FiroMempoolInfo;
 
+    const verbose = txids.result as unknown as FiroRawMempoolVerbose;
+
+    const transactions: MempoolEntryDto[] = Object.entries(verbose).map(([txid, entry]) => ({
+      txid,
+      fee: entry.fee,
+      size: entry.size,
+      feeRate: (entry.fee / entry.size) * 1000,
+      time: entry.time,
+    }));
+
     const dto: MempoolDto = {
       pendingCount: size,
       bytes,
@@ -36,9 +52,8 @@ export class MempoolService {
       maxMempool: maxmempool,
       minFee: mempoolminfee,
       instantSendLocks: instantsendlocks,
-      txids: txids.result as FiroRawMempool,
+      transactions,
     };
-
     this.cache = { value: dto, expiresAt: Date.now() + CACHE_TTL_MS };
     return dto;
   }
