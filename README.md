@@ -34,15 +34,6 @@ yarn dev
 | `FIRO_RPC_PASS` | firod RPC password        |
 | `MONGO_URI`     | MongoDB connection string |
 
-## API Documentation
-
-Swagger docs are available at /v1/docs when running locally, or publicly at [https://api.firoblocks.app/docs](https://api.firoblocks.app/docs).
-
-## Community
-
-- Chat: [#general:nexusocean.org](https://matrix.to/#/#general:nexusocean.org)
-- Matrix client: [element.nexusocean.org](https://element.nexusocean.org)
-
 ## License
 
 [Mozilla Public License 2.0](./LICENSE)
